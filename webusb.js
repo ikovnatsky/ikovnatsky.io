@@ -18,9 +18,9 @@ async function autoConnect(dev) {
         try {
 	        statusNode.innerHTML = "CONNECTED";
             await dev.open();
-       // await device.selectConfiguration(1);
-        await device.claimInterface(0);
             device = dev;
+       		 await device.selectConfiguration(1);
+	        await device.claimInterface(0);
             //await ctrlTransfer();
             // setTimeout(sendReceiveLoop, 250);
         }
