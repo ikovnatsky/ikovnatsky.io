@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple WebUSB JSON Tester</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        h1 {
+            color: #333;
+        }
+        
+        .panel {
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 20px;
+            background-color: #f9f9f9;
+        }
+        
+        #status {
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+        
+        .status-disconnected {
+            background-color: #ffe0e0;
+            color: #d32f2f;
+        }
+        
+        .status-connected {
+            background-color: #e0ffe0;
+            color: #388e3c;
+        }
+        
+        button {
+            background-color: #4CAF50;
+            border: none;
+            color: white;
+            padding: 10px 15px;
+            text-align: center;
+            font-size: 16px;
+            margin: 4px 2px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        
+        pre {
+            background-color: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        #log {
+            font-family: monospace;
+            font-size: 14px;
+            background-color: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            height: 150px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Simple WebUSB JSON Tester</h1>
+    
+    <div class="panel">
+        <div id="status" class="status-disconnected">Status: Disconnected</div>
+        <button id="connect-btn">Connect Device</button>
+        <button id="disconnect-btn" disabled>Disconnect</button>
+        <button id="send-btn" disabled>Send Reset Command</button>
+    </div>
+    
+    <div class="panel">
+        <h3>Response</h3>
+        <pre id="response">No response yet</pre>
+    </div>
+    
+    <div id="log">Log messages will appear here...</div>
+    <script src="web_adapter.js"></script>
+    <script>
+        // Assume WebUSBAdapter is already loaded
+        
+        // UI elements
+        const connectBtn = document.getElementById('connect-btn');
+        const disconnectBtn = document.getElementById('disconnect-btn');
+        const sendBtn = document.getElementById('send-btn');
+        const responseArea = document.getElementById('response');
+        const statusDiv = document.getElementById('status');
+        const logDiv = document.getElementById('log');
+        
+        // Global connection object
+        let connection = null;
+        
+        // Log function
+        function log(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            logDiv.innerHTML += `[${timestamp}] ${message}<br>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+            console.log(message);
+        }
+        
+        // Update UI based on connection status
+        function updateUI(connected) {
+            if (connected) {
+                statusDiv.textContent = 'Status: Connected';
+                statusDiv.className = 'status-connected';
+                connectBtn.disabled = true;
+                disconnectBtn.disabled = false;
+                sendBtn.disabled = false;
+            } else {
+                statusDiv.textContent = 'Status: Disconnected';
+                statusDiv.className = 'status-disconnected';
+                connectBtn.disabled = false;
+                disconnectBtn.disabled = true;
+                sendBtn.disabled = true;
+            }
+        }
+        
+        // Connect button handler
+        connectBtn.addEventListener('click', async () => {
+            try {
+                log('Connecting to USB device...');
+                
+                // Create new WebUSBAdapter instance
+                connection = new WebUSBAdapter();
+                
+                // Set up event handlers
+                connection.onopen = () => {
+                    log('Connection established successfully');
+                    updateUI(true);
+                };
+                
+                connection.onclose = () => {
+                    log('Connection closed');
+                    updateUI(false);
+                };
+                
+                connection.onerror = (error) => {
+                    log(`Error: ${error.message}`);
+                };
+                
+                connection.onmessage = (event) => {
+                    log(`Received data: ${event.data}`);
+                    
+                    try {
+                        // Format JSON for display
+                        const jsonData = JSON.parse(event.data);
+                        responseArea.textContent = JSON.stringify(jsonData, null, 2);
+                    } catch (e) {
+                        // If not valid JSON, display as-is
+                        responseArea.textContent = event.data;
+                    }
+                };
+                
+                // Connect to the device
+                await connection.connect();
+                
+            } catch (error) {
+                log(`Connection failed: ${error.message}`);
+            }
+        });
+        
+        // Disconnect button handler
+        disconnectBtn.addEventListener('click', async () => {
+            if (connection) {
+                log('Disconnecting...');
+                await connection.close();
+                connection = null;
+            }
+        });
+        
+        // Send button handler
+        sendBtn.addEventListener('click', async () => {
+            if (!connection || connection.readyState !== 1) {
+                log('No active connection');
+                return;
+            }
+            
+            try {
+                const resetCommand = JSON.stringify({"command_id": "probe_scan", "transaction_id": 15});
+                log(`Sending command: ${resetCommand}`);
+                await connection.send(resetCommand);
+                
+                // Clear previous response
+                responseArea.textContent = 'Waiting for response...';
+                
+            } catch (error) {
+                log(`Error sending command: ${error.message}`);
+            }
+        });
+        
+        // Check WebUSB support on page load
+        window.addEventListener('load', () => {
+            if (!navigator.usb) {
+                log('⚠️ WebUSB is not supported in this browser. Please use Chrome or Edge.');
+                connectBtn.disabled = true;
+            } else {
+                log('WebUSB is supported in this browser ✓');
+            }
+        });
+    </script>
+</body>
+</html>
