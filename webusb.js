@@ -12,19 +12,17 @@ bytesRead = 0;
 bytesWritten = 0;
 
 async function autoConnect(dev) {
-    if (dev.manufacturerName == 'Acme' || dev.manufacturerName == 'Intel') {
+    if (dev.manufacturerName == 'Espressif Systems' || dev.manufacturerName == 'Intel') {
 	    devicesNode.innerHTML = dev.manufacturerName + ' ' +
 	        dev.productName;
         try {
 	        statusNode.innerHTML = "CONNECTED";
             await dev.open();
-            if (!dev.configuration) {
-                await dev.selectConfiguration(1);
-            }
-            await dev.claimInterface(2);
+        await device.selectConfiguration(1);
+        await device.claimInterface(0);
             device = dev;
-            await ctrlTransfer();
-            setTimeout(sendReceiveLoop, 250);
+            //await ctrlTransfer();
+            // setTimeout(sendReceiveLoop, 250);
         }
         catch (e) {
             console.log("Exception:", e.message);
