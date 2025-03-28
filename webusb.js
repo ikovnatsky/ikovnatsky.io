@@ -84,6 +84,7 @@ async function claim() {
         await device.selectConfiguration(1);
         await device.claimInterface(0);
         console.log('claim 0 success');
+	statusNode.innerHTML = "Connected";
 	    //await device.claimInterface(1)
         //console.log('claim 1 success');
         
@@ -91,6 +92,7 @@ async function claim() {
     }
     catch (e) {
         console.log('claim failed');
+	statusNode.innerHTML = "Failed ";
         return;
     }        
 }
